@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "858478842156",
+    "project_id": "smart-alarm-faa19",
+    "storage_bucket": "smart-alarm-faa19.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:858478842156:android:c4c68a3c504bd444f75c89",
+        "android_client_info": {
+          "package_name": "com.example.sample2"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "858478842156-5bv8segutoear91nj8r8e0shd4lukmuk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBfDdDSkRpKLDoGIWpACVe9xtcceHOt8wY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "858478842156-5bv8segutoear91nj8r8e0shd4lukmuk.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

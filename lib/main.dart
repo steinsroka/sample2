@@ -5,7 +5,6 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 
-
 import 'widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue/flutter_blue.dart';
@@ -190,10 +189,11 @@ class DeviceScreen extends StatelessWidget {
               await c.setNotifyValue(!c.isNotifying);
               //await ascii.decode(c.read().toString());
               await c.read();
+              var col = createCollection();
               c.value.listen((v) async {
-                val = ascii.
-                decode(v);
-                sendData(DateTime.now().toString(), val);
+                val = ascii.decode(v);
+                col.add({'time': DateTime.now().toString(), 'value': val});
+                //sendData(DateTime.now().toString(), val, col);
                 //Record record = Record(time: DateTime.now().toString(), value: val );
                 //print(record.time);
                 //print(record.value);
@@ -213,9 +213,13 @@ class DeviceScreen extends StatelessWidget {
     ).toList();
   }
 
-  void sendData(String time, String value) {
-    FirebaseFirestore firestore = FirebaseFirestore.instance;
-    firestore.collection('record').add({'time': time, 'value': value});
+  CollectionReference createCollection() {
+    String collection_name = DateTime.now().toString(); // 현재날짜 까지만 가져오기
+    CollectionReference record = FirebaseFirestore.instance.collection(collection_name);
+    return record;
+  }
+  void sendData(String time, String value, CollectionReference record) {
+    record.add({'time': time, 'value': value});
   }
 
   @override

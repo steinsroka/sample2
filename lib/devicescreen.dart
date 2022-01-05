@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 
@@ -11,8 +12,6 @@ import 'package:syncfusion_flutter_charts/charts.dart';
 // characteristic uuid: 0000ffe1-0000-1000-8000-00805f9b34fb
 // service uuid: 0000ffe0-0000-1000-8000-00805f9b34fb
 
-List<Data> chartData = [];
-
 class DeviceScreen extends StatefulWidget {
   const DeviceScreen({Key? key, required this.device}) : super(key: key);
   final BluetoothDevice device;
@@ -25,10 +24,15 @@ class _DeviceScreenState extends State<DeviceScreen> {
   FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
   DocumentReference document = FirebaseFirestore.instance.collection("record").doc('first');
   bool isButtonActive = false;
+  late List<Data> chartData;
+  late ChartSeriesController _chartSeriesController;
+  double d = 0;
 
   @override
   void initState() {
     super.initState();
+    chartData = getChartData();
+    Timer.periodic(const Duration(seconds: 1), updateDataSource);
     initNotification();
     isButtonActive = false;
   }
@@ -74,6 +78,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
         child: Column(
           children: <Widget>[
             _buildBody1(),
+            _buildBody3(context),
             StreamBuilder<List<BluetoothService>>(
               stream: widget.device.services,
               initialData: [],
@@ -87,10 +92,9 @@ class _DeviceScreenState extends State<DeviceScreen> {
                 }
               },
             ),
-            _buildBody3(context),
+
             ElevatedButton(
               onPressed: () {
-                print(chartData[0].time);
               } /* =>
                   Navigator.of(context).push(MaterialPageRoute(
                       builder: (context) => ResultScreen()
@@ -172,11 +176,11 @@ class _DeviceScreenState extends State<DeviceScreen> {
     );
   }
 
-Widget _buildBody2(BuildContext context, List<BluetoothService> services) {
-    bool isRecording = false;
-    String val= '';
-    int count = 0;
-    double d = 0;
+  bool isRecording = false;
+  String val= '';
+  int count = 0;
+  Widget _buildBody2(BuildContext context, List<BluetoothService> services) {
+    //double d = 0;
     String suuid = '0000ffe0-0000-1000-8000-00805f9b34fb';
     String cuuid = '0000ffe1-0000-1000-8000-00805f9b34fb';
 
@@ -213,38 +217,11 @@ Widget _buildBody2(BuildContext context, List<BluetoothService> services) {
                         Text(value.toString()),
                         ElevatedButton(
                           child: Text(characteristic.isNotifying? '측정종료' : '측정시작'),
-                          onPressed: () async {
-                            await characteristic.setNotifyValue(!characteristic.isNotifying);
-                            await characteristic.read();
-                            if(isRecording == false) { // 기록 시작
-                              isRecording = true;
-                              characteristic.value.listen((v) async {
-                                val = ascii.decode(v);
-                                d = double.parse(val);
-                                if(d <1.0) {
-                                  count++;
-                                } else {
-                                  count = 0;
-                                }
-                                if(count > 10) {
-                                  showNotification(count);
-                                }
-                                document.collection("data").add({'time': DateTime.now().toString(), 'value': val});
-                                chartData.add(Data(DateTime.now(), d));
-                                //Record record = Record(time: DateTime.now().toString(), value: val );
-                                //print(record.time);
-                                //print(record.value);
-                              });
-                            } else { // 기록 종료
-                              isRecording = false;
-                              count = 0;
-                              widget.device.discoverServices();
-                            }
-                          },
+                          onPressed: () => startRecording(characteristic)
                         ),
-                        Text(val),
                         Text(d < 1.0? '호흡없음' : '호흡중'),
-                        Text('호흡없는 상태 $count 초')
+                        Text('호흡없는 상태 $count 초'),
+                        Text(val),
                       ]
                   );
                   case ConnectionState.done:
@@ -256,22 +233,80 @@ Widget _buildBody2(BuildContext context, List<BluetoothService> services) {
           ],
     );
   }
+  
+  /// startRecording: 
+  /// 1. 아두이노로부터 전달되는 데이터실시간으로 읽어옴
+  /// 1-1. 읽어온 데이터를 가공하여 무호흡 상태를 판별함
+  /// 2. Document를 생성하고 실시간 데이터를 firebase에 저장함
+  /// 2-2. 무호흡상태가 있으면 이를 firebase에 저장함 (무호흡은 하나의 Record에 저장해고 관계 없음)
+  /// 3. 그래프를 그리기 시작함
+  void startRecording(BluetoothCharacteristic characteristic) async {
+    await characteristic.setNotifyValue(!characteristic.isNotifying);
+    await characteristic.read();
+    if(isRecording == false) { // 기록 시작
+      isRecording = true;
+      characteristic.value.listen((v) async {
+        val = ascii.decode(v);
+        d = double.parse(val);
+        if(d <1.0) {
+          count++;
+        } else {
+          count = 0;
+        }
+        if(count > 10) {
+          showNotification(count);
+        }
+        document.collection("data").add({'time': DateTime.now().toString(), 'value': val});
+        //Record record = Record(time: DateTime.now().toString(), value: val );
+      });
+    } else { // 기록 종료
+      isRecording = false;
+      count = 0;
+      widget.device.discoverServices();
+    }
+  }
+  
+  /// 1. 실시간으로 받아오는 데이터를 무시한다
+  /// 1-1. 각종 변수 초기화
+  /// 2. firebase document와의 연결을 해제
+  /// 3. 그래프 그리기 종료
+  void endRecording() {
+    
+  }
 
   // 그래프
   Widget _buildBody3(BuildContext context) {
-    return Container(
-      child: SfCartesianChart(
-        primaryXAxis: DateTimeAxis(
-            minimum: DateTime.now(),
-            maximum: DateTime.now().add(const Duration(minutes: 1))),
-        series: <ChartSeries>[
-          LineSeries<Data, DateTime>(
-              dataSource: chartData,
-              xValueMapper: (Data data, _) => data.time,
-              yValueMapper: (Data data, _) => data.val)
-        ],
-      ),
+    return SfCartesianChart(
+      series: <LineSeries<Data, DateTime>>[
+        LineSeries<Data, DateTime>(
+          onRendererCreated: (ChartSeriesController controller){
+            _chartSeriesController = controller;
+          },
+          dataSource: chartData,
+          xValueMapper: (Data data, _) => data.time,
+          yValueMapper: (Data data, _) => data.val)
+      ],
+      primaryXAxis: DateTimeAxis(
+          intervalType: DateTimeIntervalType.seconds // TODO: 간격이 5초~10초정도로 잡히는데 60초로 늘릴것
+      )
     );
+  }
+
+  DateTime time = DateTime.now();
+  int i = 5;
+  void updateDataSource(Timer timer) {
+    chartData.add(Data(time.add(Duration(seconds:i++)), d));
+    chartData.removeAt(0);
+    _chartSeriesController.updateDataSource(
+      addedDataIndex: chartData.length -1, removedDataIndex: 0
+    );
+  }
+
+  List<Data> getChartData() {
+    return <Data> [
+
+
+    ];
   }
 }
 

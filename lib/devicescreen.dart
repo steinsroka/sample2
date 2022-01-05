@@ -23,7 +23,7 @@ class DeviceScreen extends StatefulWidget {
 
 class _DeviceScreenState extends State<DeviceScreen> {
   FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-
+  DocumentReference document = FirebaseFirestore.instance.collection("record").doc('first');
   bool isButtonActive = false;
 
   @override
@@ -179,6 +179,7 @@ Widget _buildBody2(BuildContext context, List<BluetoothService> services) {
     double d = 0;
     String suuid = '0000ffe0-0000-1000-8000-00805f9b34fb';
     String cuuid = '0000ffe1-0000-1000-8000-00805f9b34fb';
+
     BluetoothService service = services.last;
     BluetoothCharacteristic characteristic = service.characteristics.last;
     for (var s in services) {
@@ -205,6 +206,7 @@ Widget _buildBody2(BuildContext context, List<BluetoothService> services) {
                   case ConnectionState.waiting:
                     return const Text('Awaiting bids...');
                   case ConnectionState.active:
+
                     final value = snapshot.data;
                     return Column(
                       children: [
@@ -214,7 +216,6 @@ Widget _buildBody2(BuildContext context, List<BluetoothService> services) {
                           onPressed: () async {
                             await characteristic.setNotifyValue(!characteristic.isNotifying);
                             await characteristic.read();
-                            DocumentReference? doc = createDoc();
                             if(isRecording == false) { // 기록 시작
                               isRecording = true;
                               characteristic.value.listen((v) async {
@@ -228,16 +229,14 @@ Widget _buildBody2(BuildContext context, List<BluetoothService> services) {
                                 if(count > 10) {
                                   showNotification(count);
                                 }
-                                doc?.collection("data").add({'time': DateTime.now().toString(), 'value': val});
+                                document.collection("data").add({'time': DateTime.now().toString(), 'value': val});
                                 chartData.add(Data(DateTime.now(), d));
-                                print(chartData.isEmpty);
                                 //Record record = Record(time: DateTime.now().toString(), value: val );
                                 //print(record.time);
                                 //print(record.value);
                               });
                             } else { // 기록 종료
                               isRecording = false;
-                              doc = null;
                               count = 0;
                               widget.device.discoverServices();
                             }
@@ -256,12 +255,6 @@ Widget _buildBody2(BuildContext context, List<BluetoothService> services) {
             )
           ],
     );
-  }
-  DocumentReference createDoc() {
-    String document_name = DateTime.now().toString();
-    DocumentReference document =
-        FirebaseFirestore.instance.collection("record").doc(document_name);
-    return document;
   }
 
   // 그래프

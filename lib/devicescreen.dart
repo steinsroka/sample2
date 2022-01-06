@@ -7,6 +7,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue/flutter_blue.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:sample2/resultscreen.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
 // characteristic uuid: 0000ffe1-0000-1000-8000-00805f9b34fb
@@ -77,7 +78,20 @@ class _DeviceScreenState extends State<DeviceScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: <Widget>[
-            _buildBody1(),
+            //_buildBody1(),
+            StreamBuilder<bool>(
+              stream: widget.device.isDiscoveringServices,
+              initialData: false,
+              builder: (c, snapshot) => IndexedStack(
+                index: snapshot.data! ? 1 : 0,
+                children: <Widget>[
+                  IconButton(
+                    icon: Icon(Icons.refresh),
+                    onPressed: () => widget.device.discoverServices(),
+                  ),
+                ],
+              ),
+            ),
             _buildBody3(context),
             StreamBuilder<List<BluetoothService>>(
               stream: widget.device.services,
@@ -94,12 +108,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
             ),
 
             ElevatedButton(
-              onPressed: () {
-              } /* =>
-                  Navigator.of(context).push(MaterialPageRoute(
-                      builder: (context) => ResultScreen()
-                  )),*/
-              ,
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => ResultScreen())),
               child: Text('모든데이터 확인'),
             ),
           ],
@@ -155,10 +164,9 @@ class _DeviceScreenState extends State<DeviceScreen> {
       initialData: BluetoothDeviceState.connecting,
       builder: (c, snapshot) => ListTile(
         leading: (snapshot.data == BluetoothDeviceState.connected)
-            ? Icon(Icons.bluetooth_connected)
-            : Icon(Icons.bluetooth_disabled),
+            ? const Icon(Icons.bluetooth_connected)
+            : const Icon(Icons.bluetooth_disabled),
         title: Text('Device is ${snapshot.data.toString().split('.')[1]}.'),
-        subtitle: Text('${widget.device.id}'),
         trailing: StreamBuilder<bool>(
           stream: widget.device.isDiscoveringServices,
           initialData: false,
@@ -166,7 +174,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
             index: snapshot.data! ? 1 : 0,
             children: <Widget>[
               IconButton(
-                icon: Icon(Icons.refresh),
+                icon: const Icon(Icons.refresh),
                 onPressed: () => widget.device.discoverServices(),
               ),
             ],

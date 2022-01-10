@@ -113,18 +113,15 @@ class _DeviceScreenState extends State<DeviceScreen> {
   }
   
   Widget _buildBody2(BuildContext context, List<BluetoothService> services) {
-    String suuid = '0000ffe0-0000-1000-8000-00805f9b34fb';
-    String cuuid = '0000ffe1-0000-1000-8000-00805f9b34fb';
-
-    BluetoothService service = services.last;
-    BluetoothCharacteristic characteristic = service.characteristics.last;
+    late BluetoothService service;
+    late BluetoothCharacteristic characteristic;
     for (var s in services) {
-      if (s.uuid.toString() == suuid) {
+      if (s.uuid.toString() == '0000ffe0-0000-1000-8000-00805f9b34fb') {
         service = s;
       }
     }
     for (var c in service.characteristics) {
-      if (c.uuid.toString() == cuuid) {
+      if (c.uuid.toString() == '0000ffe1-0000-1000-8000-00805f9b34fb') {
         characteristic = c;
       }
     }

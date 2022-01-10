@@ -23,11 +23,10 @@ class _RecordScreenState extends State<RecordScreen> {
   DocumentReference apnea_document = FirebaseFirestore.instance.collection("record").doc('apnea');
   late List<Data> chartData;
   late ChartSeriesController _chartSeriesController;
-  double d = 0;
   bool isRecording = false;
   bool isApnea = false;
-  String val= '';
   int count = 0;
+  double d = 0;
 
   @override
   void initState() {
@@ -37,18 +36,16 @@ class _RecordScreenState extends State<RecordScreen> {
     initNotification();
     isRecording = false;
     isApnea = false;
-    val= '';
     count = 0;
   }
 
   @override
   void dispose() {
-    super.dispose();
     isRecording = false;
     isApnea = false;
-    val= '';
     count = 0;
     flutterLocalNotificationsPlugin.cancelAll();
+    super.dispose();
   }
 
   void initNotification() async {
@@ -89,40 +86,68 @@ class _RecordScreenState extends State<RecordScreen> {
       appBar: AppBar(
         title: Text('측정')
       ),
-      body: Column(
+      body: SingleChildScrollView(
+        child: Column(
         children: <Widget>[
           Text('Service: 0x${widget.service.uuid.toString().toUpperCase().substring(4, 8)}'),
           StreamBuilder<List<int>>(
             stream: widget.characteristic.value,
-            initialData: widget.characteristic.lastValue,
+            initialData: [],
             builder: (c, snapshot) {
               if(snapshot.hasError) return Text('Error :${snapshot.error}');
               if(!snapshot.hasData) return const Center(child:CircularProgressIndicator());
-              final value = snapshot.data;
+              final value = snapshot.data!;
+              String val = ascii.decode(value);
+              d = asciiToDouble(value);
+              if(d <1.0) {
+                count++;
+              } else {
+                count = 0;
+              }
+              if(count > 30) {
+                showNotification(count);
+              } else if (count>20) {
+                if(count%2 == 0) showNotification(count);
+              } else if (count >= 10) {
+                if(count%5 == 0) showNotification(count);
+              }
+              //print(double.parse(val));
+              //air_document.collection("data").add({'time': DateTime.now().toString(), 'value': val});
               return Column(
                   children: [
                     Text(value.toString()),
                     ElevatedButton(
-                        child: Text(isRecording ? '' : '측정시작'),
-                        onPressed: () => isRecording ? null: startRecording(widget.characteristic)
-                    ),
-                    ElevatedButton(
-                        child: Text(isRecording ? '측정종료' : ''),
-                        onPressed: () => isRecording ? stopRecording(widget.characteristic): null
+                        child: Text(isRecording ? '측정종료' : '측정시작'),
+                        onPressed: () => isRecording ? stopRecording(widget.characteristic): startRecording(widget.characteristic)
                     ),
                     Text(d < 1.0? '호흡없음' : '호흡중'),
                     Text('호흡없는 상태 $count 초'),
                     Text(val),
+                    Text(asciiToDouble(value).toString()),
                   ]
               );
             },
           ),
-          _buildBody3(context)
+
+          _buildGraph(context)
         ],
       ),
+      )
     );
   }
 
+  double asciiToDouble(List<int> v) {
+    double d = 0;
+    if(v.length == 6) {
+      d = (v[0]-48)+(v[2]-48)*0.1+(v[3]-48)*0.01;
+    } else if (v.length == 7) {
+      d = (v[0]-48)*10+(v[1]-48)+(v[3]-48)*0.1+(v[4]-48)*0.01;
+    } else if (v.length == 8) {
+      d = (v[0]-48)*100+(v[1]-48)*10+(v[2-48])*1+(v[4]-48)*0.1+(v[5]-48)*0.01;
+    }
+    print(d.toString());
+    return d;
+  }
 
   /// startRecording:
   /// 1. 아두이노로부터 전달되는 데이터실시간으로 읽어옴
@@ -132,51 +157,21 @@ class _RecordScreenState extends State<RecordScreen> {
   /// 3. 그래프를 그리기 시작함
 
   void startRecording(BluetoothCharacteristic characteristic) async {
-    setState(() {
-      isRecording = true;
-    });
-    count = 0;
+    isRecording = true;
     await characteristic.setNotifyValue(true);
-    await characteristic.read();
-      characteristic.value.listen((v) async {
-        val = ascii.decode(v);
-        d = double.parse(val);
-        if(d <1.0) {
-          setState(() {
-            count++;
-          });
-        } else {
-          count = 0;
-        }
-        if(count > 30) {
-          showNotification(count);
-        } else if (count>20) {
-          if(count%2 == 0) showNotification(count);
-        } else if (count >= 10) {
-          if(count%5 == 0) showNotification(count);
-        }
-        air_document.collection("data").add({'time': DateTime.now().toString(), 'value': val});
-        //Record record = Record(time: DateTime.now().toString(), value: val );
-      });
-
+    count = 0;
   }
 
   void stopRecording(BluetoothCharacteristic characteristic) async {
-    setState(() {
-      isRecording = false;
-    });
+    isRecording = false;
     await characteristic.setNotifyValue(false);
-    widget.device.discoverServices();
     dispose();
     Navigator.of(context).pop();
-    //FirebaseFirestore.instance.
-    // document 연결해제
-    // 그래프 그리기 종료
   }
 
 
   // 그래프
-  Widget _buildBody3(BuildContext context) {
+  Widget _buildGraph(BuildContext context) {
     return SfCartesianChart(
         series: <LineSeries<Data, DateTime>>[
           LineSeries<Data, DateTime>(
@@ -214,6 +209,8 @@ class _RecordScreenState extends State<RecordScreen> {
     ];
   }
 }
+
+
 
 class Data {
   Data(this.time, this.val);

@@ -1,17 +1,8 @@
-import 'dart:async';
 import 'dart:ui';
-
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue/flutter_blue.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:sample2/recordscreen.dart';
 import 'package:sample2/resultscreen.dart';
-import 'package:syncfusion_flutter_charts/charts.dart';
-
-// characteristic uuid: 0000ffe1-0000-1000-8000-00805f9b34fb
-// service uuid: 0000ffe0-0000-1000-8000-00805f9b34fb
 
 class DeviceScreen extends StatefulWidget {
   const DeviceScreen({Key? key, required this.device}) : super(key: key);
@@ -23,7 +14,6 @@ class DeviceScreen extends StatefulWidget {
 
 class _DeviceScreenState extends State<DeviceScreen> {
 
-
   @override
   void initState() {
     super.initState();
@@ -34,39 +24,26 @@ class _DeviceScreenState extends State<DeviceScreen> {
     widget.device.discoverServices();
     return Scaffold(
       appBar: _buildAppbar(context),
-      body: SingleChildScrollView(
-        child: Column(
+      body: ListView(
           children: <Widget>[
-            //_buildBody1(),
-            StreamBuilder<bool>(
-              stream: widget.device.isDiscoveringServices,
-              initialData: false,
-              builder: (c, snapshot) =>
-                IconButton(
-                  icon: Icon(Icons.refresh),
-                  onPressed: () => widget.device.discoverServices(),
-                ),
+            _buildBody1(),
+            ListTile(
+              title: Text('모든데이터 확인'),
+              onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => ResultScreen())),
             ),
             StreamBuilder<List<BluetoothService>>(
               stream: widget.device.services,
+              initialData: [],
               builder: (c, snapshot) {
-                if (!snapshot.hasData) {
-                  return const Text('no data yet');
-                } else {
-                  return Container(
-                    child: _buildBody2(context, snapshot.data!),
-                  );
-                }
-              },
-            ),
-
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => ResultScreen())),
-              child: Text('모든데이터 확인'),
+                if (!snapshot.hasData) return const Text('no data yet');
+                if (snapshot.hasError) return Text(snapshot.error.toString());
+                return Container(
+                  child: _buildBody2(context, snapshot.data!),
+                );
+              }
             ),
           ],
-        ),
       ),
     );
   }
@@ -117,32 +94,25 @@ class _DeviceScreenState extends State<DeviceScreen> {
     return StreamBuilder<BluetoothDeviceState>(
       stream: widget.device.state,
       initialData: BluetoothDeviceState.connecting,
-      builder: (c, snapshot) =>
-          ListTile(
-            leading: (snapshot.data == BluetoothDeviceState.connected)
-                ? const Icon(Icons.bluetooth_connected)
-                : const Icon(Icons.bluetooth_disabled),
-            title: Text('Device is ${snapshot.data.toString().split('.')[1]}.'),
-            trailing: StreamBuilder<bool>(
-              stream: widget.device.isDiscoveringServices,
-              initialData: false,
-              builder: (c, snapshot) =>
-                  IndexedStack(
-                    index: snapshot.data! ? 1 : 0,
-                    children: <Widget>[
-                      IconButton(
-                        icon: const Icon(Icons.refresh),
-                        onPressed: () => widget.device.discoverServices(),
-                      ),
-                    ],
-                  ),
-            ),
-          ),
+      builder: (c, snapshot) => ListTile(
+        leading: (snapshot.data == BluetoothDeviceState.connected)
+            ? const Icon(Icons.bluetooth_connected)
+            : const Icon(Icons.bluetooth_disabled),
+        title: Text('Device is ${snapshot.data.toString().split('.')[1]}.'),
+        trailing: StreamBuilder<bool>(
+          stream: widget.device.isDiscoveringServices,
+          initialData: false,
+          builder: (c, snapshot) =>
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                onPressed: () => widget.device.discoverServices(),
+              ),
+        ),
+      ),
     );
   }
-
+  
   Widget _buildBody2(BuildContext context, List<BluetoothService> services) {
-    //double d = 0;
     String suuid = '0000ffe0-0000-1000-8000-00805f9b34fb';
     String cuuid = '0000ffe1-0000-1000-8000-00805f9b34fb';
 
@@ -158,12 +128,12 @@ class _DeviceScreenState extends State<DeviceScreen> {
         characteristic = c;
       }
     }
-    return ElevatedButton(
-        onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+    return ListTile(
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(
             builder: (context) =>
                 RecordScreen(
                     device: widget.device, service: service, characteristic: characteristic))),
-        child: Text('측정')
+        title: const Text('측정시작'),
     );
   }
 }

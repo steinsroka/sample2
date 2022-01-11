@@ -158,8 +158,8 @@ class _RecordScreenState extends State<RecordScreen> {
           _buildGraph(context),
           ListTile(
             title: Text('취침시간'),
-            subtitle: Text(DateFormat("yyyy-MM-dd HH:mm:ss").format(recordStart) + ' to ' + DateFormat("yyyy-MM-dd HH:mm:ss").format(recordEnd)),
-            trailing: Text(recordEnd.difference(recordStart).toString()),
+            subtitle: Text(DateFormat("yyyy-MM-dd HH:mm:ss").format(recordStart) + ' to \n' + DateFormat("yyyy-MM-dd HH:mm:ss").format(recordEnd)),
+            trailing: Text(durationToString(recordEnd.difference(recordStart))),
           ),
           _buildApneaList(context)
         ],
@@ -211,21 +211,25 @@ class _RecordScreenState extends State<RecordScreen> {
 
   Widget _buildApneaList(BuildContext context) {
     return ExpansionTile(
-      title: Text('무호흡 데이터'),
-      subtitle: Text('무호흡 횟수: $j'),
+      title: Text('무호흡'),
+      subtitle: Text('무호흡 횟수: $j회'),
       children: [ListView.builder(
         shrinkWrap: true,
         itemCount: apneaData.length,
         itemBuilder: (context, index) {
           return ListTile(
-            title: Text(apneaData[index].id.toString()),
-            subtitle: Text(DateFormat("yyyy-MM-dd HH:mm:ss").format(apneaData[index].start) +
-                ' to ' + DateFormat("yyyy-MM-dd HH:mm:ss").format(apneaData[index].end)),
-            trailing: Text(apneaData[index].end.difference(apneaData[index].start).toString()),
+            title: Text(apneaData[index].id.toString() + '회'),
+            subtitle: Text(DateFormat("yyyy-MM-dd HH:mm:ss").format(apneaData[index].start).substring(11,19) +
+                ' to ' + DateFormat("yyyy-MM-dd HH:mm:ss").format(apneaData[index].end).substring(11,19)),
+            trailing: Text(durationToString(apneaData[index].end.difference(apneaData[index].start))),
           );
         },
       )]
     );
+  }
+
+  String durationToString(Duration duration) {
+    return "${duration.inHours}:${duration.inMinutes.remainder(60)}:${(duration.inSeconds.remainder(60))}";
   }
 
   void updateDataSource(Timer timer) {

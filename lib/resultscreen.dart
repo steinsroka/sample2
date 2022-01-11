@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:sample2/record.dart';
+import 'package:sample2/data.dart';
 
 class ResultScreen extends StatefulWidget {
   const ResultScreen({Key? key}) : super(key: key);

@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue/flutter_blue.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:intl/intl.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
 class RecordScreen extends StatefulWidget {
@@ -22,15 +23,23 @@ class _RecordScreenState extends State<RecordScreen> {
   DocumentReference air_document = FirebaseFirestore.instance.collection("record").doc('first');
   DocumentReference apnea_document = FirebaseFirestore.instance.collection("record").doc('apnea');
   late List<Data> chartData;
+  late List<Apnea> apneaData;
   late ChartSeriesController _chartSeriesController;
   bool isRecording = false;
   bool isApnea = false;
   int count = 0;
   double d = 0;
-
+  DateTime time = DateTime.now();
+  int i = 5;
+  int j = 0;
+  DateTime apneaStart = DateTime.now();
+  DateTime recordStart = DateTime.now();
+  DateTime recordEnd = DateTime.now();
+  late Duration diff;
   @override
   void initState() {
     super.initState();
+    apneaData = getApneaData();
     chartData = getChartData();
     Timer.periodic(const Duration(seconds: 1), updateDataSource);
     initNotification();
@@ -41,9 +50,6 @@ class _RecordScreenState extends State<RecordScreen> {
 
   @override
   void dispose() {
-    isRecording = false;
-    isApnea = false;
-    count = 0;
     flutterLocalNotificationsPlugin.cancelAll();
     super.dispose();
   }
@@ -103,6 +109,10 @@ class _RecordScreenState extends State<RecordScreen> {
                 count++;
               } else {
                 count = 0;
+                if(isApnea) {
+                  apneaData.add(Apnea(++j, apneaStart, DateTime.now()));
+                }
+                isApnea = false;
               }
               if(count > 30) {
                 showNotification(count);
@@ -110,6 +120,11 @@ class _RecordScreenState extends State<RecordScreen> {
                 if(count%2 == 0) showNotification(count);
               } else if (count >= 10) {
                 if(count%5 == 0) showNotification(count);
+                if(!isApnea){
+                  apneaStart = DateTime.now();
+
+                }
+                isApnea = true;
               }
               //print(double.parse(val));
               //air_document.collection("data").add({'time': DateTime.now().toString(), 'value': val});
@@ -117,8 +132,19 @@ class _RecordScreenState extends State<RecordScreen> {
                   children: [
                     Text(value.toString()),
                     ElevatedButton(
-                        child: Text(isRecording ? '측정종료' : '측정시작'),
-                        onPressed: () => isRecording ? stopRecording(widget.characteristic): startRecording(widget.characteristic)
+                        child: isRecording ? Text('측정종료') : Text('측정시작'),
+                        onPressed: () {
+                          if(isRecording) {
+                            stopRecording(widget.characteristic);
+                            recordEnd = DateTime.now();
+                          } else {
+                            startRecording(widget.characteristic);
+                            recordStart = DateTime.now();
+                          }
+                          setState(() {
+                            isRecording = !isRecording;
+                          });
+                        }
                     ),
                     Text(d < 1.0? '호흡없음' : '호흡중'),
                     Text('호흡없는 상태 $count 초'),
@@ -129,7 +155,13 @@ class _RecordScreenState extends State<RecordScreen> {
             },
           ),
 
-          _buildGraph(context)
+          _buildGraph(context),
+          ListTile(
+            title: Text('취침시간'),
+            subtitle: Text(DateFormat("yyyy-MM-dd HH:mm:ss").format(recordStart) + ' to ' + DateFormat("yyyy-MM-dd HH:mm:ss").format(recordEnd)),
+            trailing: Text(recordEnd.difference(recordStart).toString()),
+          ),
+          _buildApneaList(context)
         ],
       ),
       )
@@ -149,26 +181,15 @@ class _RecordScreenState extends State<RecordScreen> {
     return d;
   }
 
-  /// startRecording:
-  /// 1. 아두이노로부터 전달되는 데이터실시간으로 읽어옴
-  /// 1-1. 읽어온 데이터를 가공하여 무호흡 상태를 판별함
-  /// 2. Document를 생성하고 실시간 데이터를 firebase에 저장함
-  /// 2-2. 무호흡상태가 있으면 이를 firebase에 저장함 (무호흡은 하나의 Record에 저장해고 관계 없음)
-  /// 3. 그래프를 그리기 시작함
-
   void startRecording(BluetoothCharacteristic characteristic) async {
-    isRecording = true;
     await characteristic.setNotifyValue(true);
     count = 0;
   }
 
   void stopRecording(BluetoothCharacteristic characteristic) async {
-    isRecording = false;
     await characteristic.setNotifyValue(false);
-    dispose();
-    Navigator.of(context).pop();
+    count = 0;
   }
-
 
   // 그래프
   Widget _buildGraph(BuildContext context) {
@@ -187,8 +208,25 @@ class _RecordScreenState extends State<RecordScreen> {
         )
     );
   }
-  DateTime time = DateTime.now();
-  int i = 5;
+
+  Widget _buildApneaList(BuildContext context) {
+    return ExpansionTile(
+      title: Text('무호흡 데이터'),
+      subtitle: Text('무호흡 횟수: $j'),
+      children: [ListView.builder(
+        shrinkWrap: true,
+        itemCount: apneaData.length,
+        itemBuilder: (context, index) {
+          return ListTile(
+            title: Text(apneaData[index].id.toString()),
+            subtitle: Text(DateFormat("yyyy-MM-dd HH:mm:ss").format(apneaData[index].start) +
+                ' to ' + DateFormat("yyyy-MM-dd HH:mm:ss").format(apneaData[index].end)),
+            trailing: Text(apneaData[index].end.difference(apneaData[index].start).toString()),
+          );
+        },
+      )]
+    );
+  }
 
   void updateDataSource(Timer timer) {
     chartData.add(Data(time.add(Duration(seconds:i++)), d));
@@ -197,6 +235,8 @@ class _RecordScreenState extends State<RecordScreen> {
         addedDataIndex: chartData.length -1, removedDataIndex: 0
     );
   }
+
+  List<Apnea> getApneaData() {return <Apnea> [];}
 
   List<Data> getChartData() {
     return <Data> [
@@ -210,7 +250,13 @@ class _RecordScreenState extends State<RecordScreen> {
   }
 }
 
+class Apnea {
+  Apnea(this.id, this.start, this.end);
 
+  final int id;
+  final DateTime start;
+  final DateTime end;
+}
 
 class Data {
   Data(this.time, this.val);
@@ -219,3 +265,4 @@ class Data {
   final double val;
 }
 
+//DateFormat("yyyy-MM-dd HH:mm:ss").format(DateTime.now())

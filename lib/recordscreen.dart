@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
+//import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue/flutter_blue.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -20,8 +20,8 @@ class RecordScreen extends StatefulWidget {
 
 class _RecordScreenState extends State<RecordScreen> {
   FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-  DocumentReference air_document = FirebaseFirestore.instance.collection("record").doc('first');
-  DocumentReference apnea_document = FirebaseFirestore.instance.collection("record").doc('apnea');
+  //DocumentReference air_document = FirebaseFirestore.instance.collection("record").doc('first');
+  //DocumentReference apnea_document = FirebaseFirestore.instance.collection("record").doc('apnea');
   late List<Data> chartData;
   late List<Apnea> apneaData;
   late ChartSeriesController _chartSeriesController;
@@ -90,7 +90,7 @@ class _RecordScreenState extends State<RecordScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('측정')
+        title: const Text('호흡 측정')
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -98,7 +98,7 @@ class _RecordScreenState extends State<RecordScreen> {
           Text('Service: 0x${widget.service.uuid.toString().toUpperCase().substring(4, 8)}'),
           StreamBuilder<List<int>>(
             stream: widget.characteristic.value,
-            initialData: [],
+            initialData: const [],
             builder: (c, snapshot) {
               if(snapshot.hasError) return Text('Error :${snapshot.error}');
               if(!snapshot.hasData) return const Center(child:CircularProgressIndicator());
@@ -126,13 +126,12 @@ class _RecordScreenState extends State<RecordScreen> {
                 }
                 isApnea = true;
               }
-              //print(double.parse(val));
               //air_document.collection("data").add({'time': DateTime.now().toString(), 'value': val});
               return Column(
                   children: [
                     Text(value.toString()),
                     ElevatedButton(
-                        child: isRecording ? Text('측정종료') : Text('측정시작'),
+                        child: isRecording ? const Text('측정종료') : const Text('측정시작'),
                         onPressed: () {
                           if(isRecording) {
                             stopRecording(widget.characteristic);
@@ -157,7 +156,7 @@ class _RecordScreenState extends State<RecordScreen> {
 
           _buildGraph(context),
           ListTile(
-            title: Text('취침시간'),
+            title: const Text('취침시간'),
             subtitle: Text(DateFormat("yyyy-MM-dd HH:mm:ss").format(recordStart) + ' to \n' + DateFormat("yyyy-MM-dd HH:mm:ss").format(recordEnd)),
             trailing: Text(durationToString(recordEnd.difference(recordStart))),
           ),
@@ -177,7 +176,6 @@ class _RecordScreenState extends State<RecordScreen> {
     } else if (v.length == 8) {
       d = (v[0]-48)*100+(v[1]-48)*10+(v[2-48])*1+(v[4]-48)*0.1+(v[5]-48)*0.01;
     }
-    print(d.toString());
     return d;
   }
 
@@ -201,19 +199,22 @@ class _RecordScreenState extends State<RecordScreen> {
               },
               dataSource: chartData,
               xValueMapper: (Data data, _) => data.time,
-              yValueMapper: (Data data, _) => data.val)
+              yValueMapper: (Data data, _) => data.val,
+
+          )
         ],
         primaryXAxis: DateTimeAxis(
-            intervalType: DateTimeIntervalType.auto// TODO: 간격이 5초~10초정도로 잡히는데 60초로 늘릴것
-        )
+            intervalType: DateTimeIntervalType.minutes// TODO: 간격이 5초~10초정도로 잡히는데 60초로 늘릴것
+        ),
     );
   }
 
   Widget _buildApneaList(BuildContext context) {
     return ExpansionTile(
-      title: Text('무호흡'),
+      title: const Text('무호흡'),
       subtitle: Text('무호흡 횟수: $j회'),
       children: [ListView.builder(
+        physics: const ClampingScrollPhysics(),
         shrinkWrap: true,
         itemCount: apneaData.length,
         itemBuilder: (context, index) {
@@ -238,17 +239,46 @@ class _RecordScreenState extends State<RecordScreen> {
     _chartSeriesController.updateDataSource(
         addedDataIndex: chartData.length -1, removedDataIndex: 0
     );
+    if(chartData.length > 600) {
+      chartData.clear();
+    }
   }
 
   List<Apnea> getApneaData() {return <Apnea> [];}
 
   List<Data> getChartData() {
     return <Data> [
-      Data(DateTime.now().add(Duration(seconds:0)), 1.0),
-      Data(DateTime.now().add(Duration(seconds:1)), 1.0),
-      Data(DateTime.now().add(Duration(seconds:2)), 1.0),
-      Data(DateTime.now().add(Duration(seconds:3)), 1.0),
-      Data(DateTime.now().add(Duration(seconds:4)), 1.0)
+      Data(DateTime.now().add(const Duration(seconds:0)), 0),
+      Data(DateTime.now().add(const Duration(seconds:1)), 0),
+      Data(DateTime.now().add(const Duration(seconds:2)), 0),
+      Data(DateTime.now().add(const Duration(seconds:3)), 0),
+      Data(DateTime.now().add(const Duration(seconds:4)), 0),
+      Data(DateTime.now().add(const Duration(seconds:5)), 0),
+      Data(DateTime.now().add(const Duration(seconds:6)), 0),
+      Data(DateTime.now().add(const Duration(seconds:7)), 0),
+      Data(DateTime.now().add(const Duration(seconds:8)), 0),
+      Data(DateTime.now().add(const Duration(seconds:9)), 0),
+      Data(DateTime.now().add(const Duration(seconds:10)), 0),
+      Data(DateTime.now().add(const Duration(seconds:11)), 0),
+      Data(DateTime.now().add(const Duration(seconds:12)), 0),
+      Data(DateTime.now().add(const Duration(seconds:13)), 0),
+      Data(DateTime.now().add(const Duration(seconds:14)), 0),
+      Data(DateTime.now().add(const Duration(seconds:15)), 0),
+      Data(DateTime.now().add(const Duration(seconds:16)), 0),
+      Data(DateTime.now().add(const Duration(seconds:17)), 0),
+      Data(DateTime.now().add(const Duration(seconds:18)), 0),
+      Data(DateTime.now().add(const Duration(seconds:19)), 0),
+      Data(DateTime.now().add(const Duration(seconds:20)), 0),
+      Data(DateTime.now().add(const Duration(seconds:21)), 0),
+      Data(DateTime.now().add(const Duration(seconds:22)), 0),
+      Data(DateTime.now().add(const Duration(seconds:23)), 0),
+      Data(DateTime.now().add(const Duration(seconds:24)), 0),
+      Data(DateTime.now().add(const Duration(seconds:25)), 0),
+      Data(DateTime.now().add(const Duration(seconds:26)), 0),
+      Data(DateTime.now().add(const Duration(seconds:27)), 0),
+      Data(DateTime.now().add(const Duration(seconds:28)), 0),
+      Data(DateTime.now().add(const Duration(seconds:29)), 0),
+      Data(DateTime.now().add(const Duration(seconds:30)), 0),
 
     ];
   }

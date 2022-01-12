@@ -7,8 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_blue/flutter_blue.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  //WidgetsFlutterBinding.ensureInitialized();
+  //await Firebase.initializeApp();
   runApp(FlutterBlueApp());
 }
 
@@ -99,6 +99,9 @@ class FindDevicesScreen extends StatelessWidget {
                                     builder: (context) =>
                                         DeviceScreen(device: d))),
                           );
+                        }
+                        else if (snapshot.data == BluetoothDeviceState.connecting) {
+                          return const CircularProgressIndicator();
                         }
                         return Text(snapshot.data.toString());
                       },

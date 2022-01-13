@@ -3,6 +3,7 @@ import 'dart:convert';
 
 //import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_blue/flutter_blue.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/intl.dart';
@@ -35,7 +36,9 @@ class _RecordScreenState extends State<RecordScreen> {
   DateTime apneaStart = DateTime.now();
   DateTime recordStart = DateTime.now();
   DateTime recordEnd = DateTime.now();
-  late Duration diff;
+  Duration? diff;
+  final service = FlutterBackgroundService();
+
   @override
   void initState() {
     super.initState();
@@ -45,12 +48,16 @@ class _RecordScreenState extends State<RecordScreen> {
     initNotification();
     isRecording = false;
     isApnea = false;
+    service.start();
     count = 0;
   }
 
   @override
   void dispose() {
     flutterLocalNotificationsPlugin.cancelAll();
+    isRecording = false;
+    isApnea = false;
+    count = 0;
     super.dispose();
   }
 
@@ -122,10 +129,11 @@ class _RecordScreenState extends State<RecordScreen> {
                 if(count%5 == 0) showNotification(count);
                 if(!isApnea){
                   apneaStart = DateTime.now();
-
                 }
                 isApnea = true;
               }
+              print(count);
+              print(d);
               //air_document.collection("data").add({'time': DateTime.now().toString(), 'value': val});
               return Column(
                   children: [
@@ -133,10 +141,15 @@ class _RecordScreenState extends State<RecordScreen> {
                     ElevatedButton(
                         child: isRecording ? const Text('측정종료') : const Text('측정시작'),
                         onPressed: () {
+
                           if(isRecording) {
+                            service.sendData(
+                              {"action": "stopService"},
+                            );
                             stopRecording(widget.characteristic);
                             recordEnd = DateTime.now();
                           } else {
+                            service.start();
                             startRecording(widget.characteristic);
                             recordStart = DateTime.now();
                           }
@@ -206,6 +219,19 @@ class _RecordScreenState extends State<RecordScreen> {
         primaryXAxis: DateTimeAxis(
             intervalType: DateTimeIntervalType.minutes// TODO: 간격이 5초~10초정도로 잡히는데 60초로 늘릴것
         ),
+      primaryYAxis: LogarithmicAxis(
+        minimum: 0.01,
+        maximum: 100,
+        plotBands: <PlotBand>[
+          PlotBand(
+            isVisible: true,
+            start: 1,
+            end: 1,
+            borderWidth: 1,
+            borderColor: Colors.redAccent
+          )
+        ]
+      ),
     );
   }
 
@@ -239,15 +265,13 @@ class _RecordScreenState extends State<RecordScreen> {
     _chartSeriesController.updateDataSource(
         addedDataIndex: chartData.length -1, removedDataIndex: 0
     );
-    if(chartData.length > 600) {
-      chartData.clear();
-    }
   }
 
   List<Apnea> getApneaData() {return <Apnea> [];}
 
   List<Data> getChartData() {
     return <Data> [
+
       Data(DateTime.now().add(const Duration(seconds:0)), 0),
       Data(DateTime.now().add(const Duration(seconds:1)), 0),
       Data(DateTime.now().add(const Duration(seconds:2)), 0),

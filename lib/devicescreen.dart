@@ -132,6 +132,11 @@ class _DeviceScreenState extends State<DeviceScreen> {
           String text;
           switch (snapshot.data) {
             case BluetoothDeviceState.connected:
+              if(service.uuid.toString() != '0000ffe0-0000-1000-8000-00805f9b34fb' ||
+                  characteristic.uuid.toString() != '0000ffe1-0000-1000-8000-00805f9b34fb') {
+                onTap = null;
+                text = '지원하는 기기가 아닙니다';
+              }
               onTap = () => Navigator.of(context).push(MaterialPageRoute(
                   builder: (context) => RecordScreen(
                       device: widget.device,

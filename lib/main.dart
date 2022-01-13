@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'devicescreen.dart';
@@ -9,9 +10,49 @@ import 'package:flutter_blue/flutter_blue.dart';
 void main() async {
   //WidgetsFlutterBinding.ensureInitialized();
   //await Firebase.initializeApp();
+  WidgetsFlutterBinding.ensureInitialized();
+  initializeService();
   runApp(FlutterBlueApp());
 }
 
+Future<void> initializeService() async {
+  final service = FlutterBackgroundService();
+  await service.configure(
+    androidConfiguration: AndroidConfiguration(
+      onStart: onStart,
+      autoStart: true,
+      isForegroundMode: true,
+    ),
+    iosConfiguration: IosConfiguration(
+      autoStart: true,
+      onForeground: onStart,
+      onBackground: onIosBackground,
+    ),
+  );
+}
+
+void onIosBackground() {
+  WidgetsFlutterBinding.ensureInitialized();
+  print('FLUTTER BACKGROUND FETCH');
+}
+
+void onStart() {
+  WidgetsFlutterBinding.ensureInitialized();
+  final service = FlutterBackgroundService();
+  service.onDataReceived.listen((event) {
+    if (event!["action"] == "stopService") {
+      service.stopBackgroundService();
+    }
+  });
+  Timer.periodic(Duration(seconds: 1), (timer) async {
+    if (!(await service.isServiceRunning())) timer.cancel();
+    FlutterBackgroundService().setNotificationInfo(
+      title: "My App Service",
+      content: "Updated at ${DateTime.now()}",
+    );
+  });
+
+}
 class FlutterBlueApp extends StatelessWidget {
 
   @override
@@ -90,8 +131,7 @@ class FindDevicesScreen extends StatelessWidget {
                       stream: d.state,
                       initialData: BluetoothDeviceState.disconnected,
                       builder: (c, snapshot) {
-                        if (snapshot.data ==
-                            BluetoothDeviceState.connected) {
+                        if (snapshot.data == BluetoothDeviceState.connected) {
                           return ElevatedButton(
                             child: Text('OPEN'),
                             onPressed: () => Navigator.of(context).push(
@@ -99,9 +139,6 @@ class FindDevicesScreen extends StatelessWidget {
                                     builder: (context) =>
                                         DeviceScreen(device: d))),
                           );
-                        }
-                        else if (snapshot.data == BluetoothDeviceState.connecting) {
-                          return const CircularProgressIndicator();
                         }
                         return Text(snapshot.data.toString());
                       },
@@ -118,13 +155,11 @@ class FindDevicesScreen extends StatelessWidget {
                       .map(
                         (r) => ScanResultTile(
                       result: r,
-                      onTap: () => //Navigator.of(context).push(MaterialPageRoute(builder: (context) {
-                        r.device.connect()
-                        //return DeviceScreen(device: r.device);
-                      //})),
+                      onTap: () {
+                        r.device.connect();
+                      },
                     ),
-                  )
-                      .toList(),
+                  ).toList(),
                 ),
               ),
             ],
@@ -156,7 +191,6 @@ class FindDevicesScreen extends StatelessWidget {
 class ScanResultTile extends StatelessWidget {
   const ScanResultTile({Key? key, required this.result, this.onTap})
       : super(key: key);
-
   final ScanResult result;
   final VoidCallback? onTap;
 
@@ -181,18 +215,19 @@ class ScanResultTile extends StatelessWidget {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     if(result.advertisementData.connectable) {
       return ListTile(
-        title: _buildTitle(context),
-        trailing: RaisedButton(
-          child: Text('CONNECT'),
-          color: Colors.black,
-          textColor: Colors.white,
-          onPressed: (result.advertisementData.connectable) ? onTap : null,
-        ),
+            title: _buildTitle(context),
+            trailing: ElevatedButton(
+              child: Text("CONNECT"),
+              style: ElevatedButton.styleFrom(
+                primary: Colors.black,
+                textStyle: const TextStyle(color: Colors.white)
+              ),
+              onPressed: onTap,
+            ),
       );
     } else {
       return Container();

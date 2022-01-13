@@ -21,7 +21,7 @@ dependencies:
   intl: ^0.17.0
   syncfusion_flutter_charts: ^19.4.40
   flutter_local_notifications: ^9.2.0
-
+  flutter_background_service: ^0.2.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
